@@ -40,7 +40,8 @@ resource "aws_eks_cluster" "this" {
   version  = var.cluster_version
 
   access_config {
-    authentication_mode = "API"
+    authentication_mode                         = "API"
+    bootstrap_cluster_creator_admin_permissions = true
   }
 
   enabled_cluster_log_types = var.cluster_enabled_log_types

@@ -10,7 +10,6 @@ RUN go mod download
 RUN addgroup -S gatus && adduser -S gatus -G gatus
 
 COPY . . 
-
 RUN CGO_ENABLED=0 GOOS=linux go build -o /gatus
 
 
@@ -19,7 +18,7 @@ COPY --from=builder /gatus /gatus
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
-COPY config.yaml /config/config.yaml
+COPY config.default.yaml /config/config.yaml
 USER gatus
 EXPOSE 8080
 ENTRYPOINT ["/gatus"]

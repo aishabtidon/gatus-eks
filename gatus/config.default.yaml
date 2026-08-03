@@ -1,0 +1,12 @@
+# Default config baked into the image for Docker builds.
+# Runtime config is overridden by the ConfigMap mounted at /config in Kubernetes.
+storage:
+  type: memory
+web:
+  port: 8080
+endpoints:
+  - name: self
+    url: "https://eks.gatus-eks.com"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"

@@ -1,0 +1,28 @@
+# ExternalDNS Helm values — Route53
+# ROLE_ARN is filled at install time from terraform output
+serviceAccount:
+  create: true
+  name: external-dns
+  annotations:
+    eks.amazonaws.com/role-arn: "REPLACE_EXTERNAL_DNS_ROLE_ARN"
+
+provider:
+  name: aws
+
+env:
+  - name: AWS_DEFAULT_REGION
+    value: eu-north-1
+
+sources:
+  - service
+  - ingress
+
+domainFilters:
+  - gatus-eks.com
+
+policy: upsert-only
+registry: txt
+txtOwnerId: gatus-eks
+
+extraArgs:
+  - --aws-zone-type=public

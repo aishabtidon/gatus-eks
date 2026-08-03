@@ -1,6 +1,6 @@
 terraform {
   backend "s3" {
-    bucket         = "aishabtidon-terraform-state"
+    bucket         = "aishabtidon-gatus-tfstate-141899078890"
     key            = "gatus-eks/terraform.tfstate"
     region         = "eu-north-1"
     dynamodb_table = "terraform-locks"
