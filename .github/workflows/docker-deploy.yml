@@ -1,0 +1,150 @@
+name: Pipeline 2 - Docker, Security & Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "gatus/**"
+      - "k8s/gatus/**"
+      - ".github/workflows/docker-deploy.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "gatus/**"
+      - "k8s/gatus/**"
+      - "infra/**"
+      - ".github/workflows/docker-deploy.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-north-1
+  ECR_REPOSITORY: gatus-app
+  EKS_CLUSTER_NAME: gatus-eks
+  GATUS_NAMESPACE: gatus
+  GATUS_DEPLOYMENT: gatus
+  GATUS_CONTAINER: gatus
+
+jobs:
+  checkov:
+    name: Checkov - Terraform security scan
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Checkov on infra/
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infra
+          framework: terraform
+          # Report findings; set soft_fail: false later to fail the job on issues
+          soft_fail: true
+          output_format: cli
+          compact: true
+
+  build-scan-push:
+    name: Build, Trivy, Push to ECR
+    needs: checkov
+    runs-on: ubuntu-24.04
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure ECR repository exists
+        run: |
+          set -euo pipefail
+          if ! aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" --region "$AWS_REGION" >/dev/null 2>&1; then
+            aws ecr create-repository \
+              --repository-name "$ECR_REPOSITORY" \
+              --region "$AWS_REGION" \
+              --image-scanning-configuration scanOnPush=true \
+              --encryption-configuration encryptionType=AES256
+          fi
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image name
+        id: meta
+        run: |
+          IMAGE="${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:${{ github.sha }}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "IMAGE=${IMAGE}" >> "$GITHUB_ENV"
+
+      - name: Build Docker image
+        run: |
+          set -euo pipefail
+          docker build --no-cache -t "$IMAGE" ./gatus
+
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.IMAGE }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+          vuln-type: os,library
+
+      - name: Push image to ECR
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          docker tag "$IMAGE" "${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:latest"
+          docker push "$IMAGE"
+          docker push "${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:latest"
+
+  deploy:
+    name: Deploy to EKS
+    needs: build-scan-push
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.31.0"
+
+      - name: Update kubeconfig
+        run: |
+          set -euo pipefail
+          aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+
+      - name: Apply Kubernetes manifests
+        run: |
+          set -euo pipefail
+          kubectl apply -f k8s/gatus/deployment.yaml
+
+      - name: Set deployment image to scanned ECR tag
+        run: |
+          set -euo pipefail
+          IMAGE="${{ needs.build-scan-push.outputs.image }}"
+          kubectl -n "$GATUS_NAMESPACE" set image \
+            "deployment/${GATUS_DEPLOYMENT}" \
+            "${GATUS_CONTAINER}=${IMAGE}"
+          kubectl -n "$GATUS_NAMESPACE" rollout status "deployment/${GATUS_DEPLOYMENT}" --timeout=180s
+          kubectl -n "$GATUS_NAMESPACE" get pods,svc,ingress

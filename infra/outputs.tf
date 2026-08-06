@@ -58,3 +58,13 @@ output "cert_manager_role_arn" {
   description = "IAM role ARN for cert-manager"
   value       = module.eks.cert_manager_role_arn
 }
+
+output "ecr_repository_url" {
+  description = "ECR repository URL for the Gatus image"
+  value       = aws_ecr_repository.gatus.repository_url
+}
+
+output "ecr_repository_name" {
+  description = "ECR repository name"
+  value       = aws_ecr_repository.gatus.name
+}
