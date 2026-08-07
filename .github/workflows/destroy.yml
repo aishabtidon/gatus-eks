@@ -1,46 +1,27 @@
 name: Terraform Destroy
 
-# Manual only — never auto-destroy on push/PR
 on:
   workflow_dispatch:
-    inputs:
-      confirm:
-        description: 'Type destroy to confirm teardown of EKS and related AWS resources'
-        required: true
-        type: string
 
 permissions:
   id-token: write
   contents: read
 
-concurrency:
-  group: terraform-destroy
-  cancel-in-progress: false
-
 env:
   AWS_REGION: eu-north-1
-  TF_IN_AUTOMATION: "true"
-  WORKING_DIR: infra
 
 jobs:
   destroy:
-    name: Destroy infrastructure
     runs-on: ubuntu-24.04
     defaults:
       run:
-        working-directory: ${{ env.WORKING_DIR }}
+        working-directory: infra
 
     steps:
-      - name: Confirm destroy
-        if: ${{ inputs.confirm != 'destroy' }}
-        run: |
-          echo "::error::Confirmation failed. Re-run and type exactly: destroy"
-          exit 1
-
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials (OIDC)
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -49,7 +30,6 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.14.2"
           terraform_wrapper: false
 
       - name: Prepare tfvars
@@ -58,14 +38,8 @@ jobs:
             cp terraform.tfvars.example terraform.tfvars
           fi
 
-      - name: Terraform init (remote S3 + DynamoDB backend)
+      - name: Terraform init
         run: terraform init -input=false
 
-      - name: Terraform plan (destroy)
-        run: |
-          set -euo pipefail
-          terraform plan -destroy -input=false -no-color -out=tfplan-destroy
-          terraform show -no-color tfplan-destroy
-
       - name: Terraform destroy
-        run: terraform apply -input=false -auto-approve tfplan-destroy
+        run: terraform destroy -input=false -auto-approve
