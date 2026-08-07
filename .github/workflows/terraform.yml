@@ -6,39 +6,26 @@ on:
     branches: [main]
     paths:
       - "infra/**"
-      - ".github/workflows/terraform.yml"
-  pull_request:
-    branches: [main]
-    paths:
-      - "infra/**"
-      - ".github/workflows/terraform.yml"
 
 permissions:
   id-token: write
   contents: read
 
-concurrency:
-  group: terraform-${{ github.ref }}
-  cancel-in-progress: false
-
 env:
   AWS_REGION: eu-north-1
-  TF_IN_AUTOMATION: "true"
-  WORKING_DIR: infra
 
 jobs:
-  validate:
-    name: Format, Validate & Plan
+  terraform:
     runs-on: ubuntu-24.04
     defaults:
       run:
-        working-directory: ${{ env.WORKING_DIR }}
+        working-directory: infra
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials (OIDC)
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -47,7 +34,6 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.14.2"
           terraform_wrapper: false
 
       - name: Prepare tfvars
@@ -57,67 +43,17 @@ jobs:
           fi
 
       - name: Terraform fmt
-        id: fmt
         run: terraform fmt -check -recursive
-        continue-on-error: false
-
-      - name: Terraform init (remote S3 + DynamoDB backend)
-        id: init
-        run: terraform init -input=false
-
-      - name: Terraform validate
-        id: validate
-        run: terraform validate -no-color
-
-      - name: Terraform plan
-        id: plan
-        run: |
-          set -euo pipefail
-          terraform plan -input=false -no-color -out=tfplan
-          terraform show -no-color tfplan > tfplan.txt
-
-      - name: Upload plan artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan-${{ github.sha }}
-          path: |
-            infra/tfplan
-            infra/tfplan.txt
-          if-no-files-found: error
-
-  apply:
-    name: Apply
-    needs: validate
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    runs-on: ubuntu-24.04
-    defaults:
-      run:
-        working-directory: ${{ env.WORKING_DIR }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.14.2"
-          terraform_wrapper: false
-
-      - name: Prepare tfvars
-        run: |
-          if [ ! -f terraform.tfvars ]; then
-            cp terraform.tfvars.example terraform.tfvars
-          fi
 
       - name: Terraform init
         run: terraform init -input=false
 
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        run: terraform plan -input=false -out=tfplan
+
       - name: Terraform apply
-        run: terraform apply -input=false -auto-approve
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+        run: terraform apply -input=false -auto-approve tfplan
