@@ -41,9 +41,14 @@ resource "aws_eks_cluster" "this" {
 
   # IMPORTANT: changing bootstrap_cluster_creator_admin_permissions forces
   # full cluster replacement. Live cluster was created with false — keep it.
+  # ignore_changes blocks accidental flips (e.g. re-running an old CI commit).
   access_config {
     authentication_mode                         = "API"
     bootstrap_cluster_creator_admin_permissions = false
+  }
+
+  lifecycle {
+    ignore_changes = [access_config]
   }
 
   enabled_cluster_log_types = var.cluster_enabled_log_types

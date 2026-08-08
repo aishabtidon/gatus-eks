@@ -59,6 +59,15 @@ jobs:
       - name: Terraform plan
         run: terraform plan -input=false -out=tfplan
 
+      - name: Block EKS cluster destroy/replace
+        run: |
+          set -euo pipefail
+          terraform show -no-color tfplan | tee /tmp/tfplan.txt
+          if grep -E 'aws_eks_cluster\.this (must be replaced|will be destroyed)' /tmp/tfplan.txt; then
+            echo "::error::Refusing apply: plan would destroy/replace the EKS cluster. Do not re-run old failed Terraform jobs — run a fresh workflow on current main."
+            exit 1
+          fi
+
       - name: Terraform apply
         if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
         run: terraform apply -input=false -auto-approve tfplan
