@@ -13,6 +13,8 @@ permissions:
 
 env:
   AWS_REGION: eu-north-1
+  # Hardcoded to avoid secret paste issues (quotes/spaces). Safe to commit (ARN is an identifier).
+  AWS_ROLE_ARN: arn:aws:iam::141899078890:role/github-action-gatus
 
 jobs:
   terraform:
@@ -28,13 +30,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Debug OIDC claims
+        run: |
+          set -euo pipefail
+          RESP=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com")
+          JWT=$(echo "$RESP" | jq -r .value)
+          PAYLOAD=$(echo "$JWT" | cut -d. -f2 | tr '_-' '/+')
+          # pad base64
+          PAD=$((4 - ${#PAYLOAD} % 4)); [ $PAD -eq 4 ] || PAYLOAD="${PAYLOAD}$(printf '=%.0s' $(seq 1 $PAD))"
+          echo "$PAYLOAD" | base64 -d 2>/dev/null | jq '{iss, aud, sub, repository, repository_owner, ref}'
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
           role-skip-session-tagging: true
+
+      - name: Who am I
+        run: aws sts get-caller-identity
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3

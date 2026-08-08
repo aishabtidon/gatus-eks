@@ -39,9 +39,11 @@ resource "aws_eks_cluster" "this" {
   role_arn = aws_iam_role.cluster.arn
   version  = var.cluster_version
 
+  # IMPORTANT: changing bootstrap_cluster_creator_admin_permissions forces
+  # full cluster replacement. Live cluster was created with false — keep it.
   access_config {
     authentication_mode                         = "API"
-    bootstrap_cluster_creator_admin_permissions = true
+    bootstrap_cluster_creator_admin_permissions = false
   }
 
   enabled_cluster_log_types = var.cluster_enabled_log_types
