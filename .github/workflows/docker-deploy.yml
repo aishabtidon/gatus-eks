@@ -41,6 +41,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
+          role-skip-session-tagging: true
 
       - name: Ensure ECR repository exists
         run: |
