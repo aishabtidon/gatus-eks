@@ -53,7 +53,7 @@ spec:
     spec:
       containers:
         - name: gatus
-          image: twinproduction/gatus:stable
+          image: 141899078890.dkr.ecr.eu-north-1.amazonaws.com/gatus-app:latest
           ports:
             - containerPort: 8080
           volumeMounts:
