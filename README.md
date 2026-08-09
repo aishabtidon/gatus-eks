@@ -37,15 +37,7 @@ For CI/CD you will also need:
 
 ## Architecture Diagram
 
-Open the animated diagram in [diagrams.net](https://app.diagrams.net):
-
-- Source: [`docs/architecture.drawio`](docs/architecture.drawio)
-
-Export a high-quality PNG (200–300% zoom) into `docs/images/` for the README preview:
-
-![Architecture diagram](docs/images/architecture.png)
-
-*(Add `docs/images/architecture.png` after exporting from draw.io.)*
+![Architecture diagram](docs/images/diagram.png)
 
 ## Features
 
@@ -151,19 +143,24 @@ Update the image in `k8s/gatus/deployment.yaml` and push so ArgoCD rolls out the
 
 ## Deployment Visuals
 
-Add screenshots under `docs/images/` (Grafana dashboards, ArgoCD Synced/Healthy, live HTTPS site, CI runs):
+### Live app (HTTPS domain)
 
-| Visual | Description |
-|---|---|
-| Live app | Gatus UI at `https://eks.gatus-eks.com` |
-| ArgoCD | Application Synced / Healthy |
-| Grafana | CPU / memory, pods, nodes (and Ingress if available) |
-| CI | Successful Pipeline 1 and Pipeline 2 runs |
+![Gatus deployed at eks.gatus-eks.com](docs/images/deployedwithmydomain.png)
 
-Example:
+### ArgoCD GitOps (Synced / Healthy)
 
-![Gatus live](docs/images/gatus-live.png)
+![ArgoCD application](docs/images/argocd-ss.png)
 
-![ArgoCD](docs/images/argocd.png)
+### Monitoring (Prometheus / Grafana)
 
-![Grafana](docs/images/grafana-nodes.png)
+![Grafana monitoring dashboard](docs/images/monitoring.png)
+
+### CI/CD pipelines
+
+**Pipeline 1 — Terraform**
+
+![Pipeline 1 success](docs/images/pipline-1-success.png)
+
+**Pipeline 2 — Docker, security & deploy**
+
+![Pipeline 2 success](docs/images/pipeline-2-success.png)
