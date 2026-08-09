@@ -1,3 +1,4 @@
+# vpc
 module "vpc" {
   source = "./modules/vpc"
 
@@ -11,7 +12,7 @@ module "vpc" {
   allowed_cidr_ipv4    = var.allowed_cidr_ipv4
   gatus_container_port = var.gatus_container_port
 }
-
+# eks
 module "eks" {
   source = "./modules/eks"
 
@@ -29,6 +30,6 @@ module "eks" {
   node_min_size       = var.node_min_size
   node_max_size       = var.node_max_size
 
-  # Default [] = no CloudWatch control-plane logs (avoids high CW Logs bill)
+ 
   cluster_enabled_log_types = var.cluster_enabled_log_types
 }
