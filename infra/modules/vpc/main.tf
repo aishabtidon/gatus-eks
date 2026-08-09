@@ -107,9 +107,9 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
-# --- Security groups (kept in VPC module) ---
+# Security groups
 
-# ALB / ingress — public HTTP(S) only from allowed CIDR
+# ALB / ingress 
 resource "aws_security_group" "alb" {
   name        = "${var.project_name}-${var.environment}-alb-sg"
   description = "Allow HTTP/HTTPS to the load balancer"
@@ -147,7 +147,7 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_nodes" {
   ip_protocol                  = "tcp"
 }
 
-# Worker nodes — only accept app traffic from ALB; full egress for image pulls + Gatus probes
+# Worker nodes — only accept app traffic from ALB
 resource "aws_security_group" "nodes" {
   name        = "${var.project_name}-${var.environment}-nodes-sg"
   description = "EKS worker nodes for Gatus"
@@ -181,7 +181,7 @@ resource "aws_vpc_security_group_egress_rule" "nodes_egress_all" {
   ip_protocol       = "-1"
 }
 
-# Additional cluster SG — restrict API exposure to allowed CIDR
+# Cluster SG 
 resource "aws_security_group" "cluster" {
   name        = "${var.project_name}-${var.environment}-cluster-sg"
   description = "Additional security group for EKS control plane"
