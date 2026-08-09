@@ -1,4 +1,4 @@
-# Only create when control-plane logging is enabled (all 5 types is expensive)
+#  Control-plane logging
 resource "aws_cloudwatch_log_group" "eks" {
   count = length(var.cluster_enabled_log_types) > 0 ? 1 : 0
 
