@@ -2,8 +2,6 @@
 
 A production-style deployment of [Gatus](https://github.com/TwiN/gatus) on Amazon EKS, with infrastructure defined in Terraform and deployment automated via GitHub Actions and ArgoCD. The setup uses a multi-AZ VPC, Traefik with an AWS Network Load Balancer, cert-manager for HTTPS (Let’s Encrypt), ExternalDNS for Route 53, GitOps with ArgoCD, and Prometheus/Grafana for monitoring.
 
-**Live URL:** [https://eks.gatus-eks.com](https://eks.gatus-eks.com)
-
 ## Table of Contents
 
 - [Requirements](#requirements)
