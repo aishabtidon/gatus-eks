@@ -35,7 +35,7 @@ For CI/CD you will also need:
 
 ## Architecture Diagram
 
-![Architecture diagram](gatus-eks/docs/images/diagram1.png)
+![Architecture diagram](docs/images/diagram1.png)
 
 ## Features
 
